@@ -3,8 +3,6 @@ import type { ChainPlugin } from './types'
 import type { PaymentIntentResponse } from '../../types'
 import type { WalletPlugin } from '../wallets/types'
 
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
-
 function parseChainId(network: string): number {
   // network is CAIP-2 format: 'eip155:8453'
   const parts = network.split(':')
@@ -32,9 +30,9 @@ const evmPlugin: ChainPlugin = {
     const nonceBytes = crypto.getRandomValues(new Uint8Array(32))
     const nonce = '0x' + Array.from(nonceBytes).map(b => b.toString(16).padStart(2, '0')).join('')
 
-    // Use the asset as verifyingContract only if it's a valid EVM address;
-    // fall back to zero address to avoid ENS resolution errors on invalid addresses.
-    const verifyingContract = isAddress(asset) ? asset : ZERO_ADDRESS
+    // Ensure asset is a valid EVM address
+    if (!isAddress(asset)) throw new Error(`payment_requirements.asset is not a valid EVM address: ${asset}`)
+    const verifyingContract = asset
 
     const domain = {
       name: intent.payment_requirements.extra.name as string,

@@ -70,13 +70,13 @@ describe('EVM chain plugin', () => {
       ...MOCK_INTENT,
       payment_requirements: {
         ...MOCK_INTENT.payment_requirements,
-        asset: '0xcustom_asset_address',
+        asset: '0x1234567890123456789012345678901234567890',
         extra: { name: 'Custom Token', version: '3' },
       },
     }
     const base64 = await evmPlugin.sign(customIntent, mockWallet)
     const decoded = JSON.parse(Buffer.from(base64, 'base64').toString('utf8'))
-    expect(decoded.accepted.asset).toBe('0xcustom_asset_address')
+    expect(decoded.accepted.asset).toBe('0x1234567890123456789012345678901234567890')
     expect(decoded.accepted.extra.name).toBe('Custom Token')
   })
 
