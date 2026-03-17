@@ -38,10 +38,21 @@ function parseArgs(argv: string[]): { args: Record<string, string>; flags: Set<s
 async function readStdin(): Promise<string> {
   return new Promise((resolve) => {
     let data = ''
+    const timer = setTimeout(() => {
+      process.stdin.off('data', onData)
+      process.stdin.off('end', onEnd)
+      resolve('')
+    }, 100)
+
+    function onData(chunk: string) { data += chunk }
+    function onEnd() {
+      clearTimeout(timer)
+      resolve(data.trim())
+    }
+
     process.stdin.setEncoding('utf8')
-    process.stdin.on('data', chunk => { data += chunk })
-    process.stdin.on('end', () => resolve(data.trim()))
-    setTimeout(() => resolve(''), 100) // fallback if no stdin
+    process.stdin.on('data', onData)
+    process.stdin.on('end', onEnd)
   })
 }
 
@@ -101,10 +112,16 @@ export async function runCli(argv: string[]): Promise<void> {
         // Try stdin
         const stdinData = await readStdin()
         if (stdinData) {
-          const parsed = JSON.parse(stdinData)
-          to = to || parsed.to
-          amount = amount || parsed.amount
-          chain = chain || parsed.chain
+          try {
+            const parsed = JSON.parse(stdinData)
+            to = to || parsed.to
+            amount = amount || parsed.amount
+            chain = chain || parsed.chain
+          } catch {
+            output({ status: 'error', message: 'Invalid JSON on stdin' })
+            process.exitCode = 1
+            return
+          }
         }
       }
 
@@ -151,8 +168,14 @@ export async function runCli(argv: string[]): Promise<void> {
       if (!intentId) {
         const stdinData = await readStdin()
         if (stdinData) {
-          const parsed = JSON.parse(stdinData)
-          intentId = parsed.intent_id
+          try {
+            const parsed = JSON.parse(stdinData)
+            intentId = parsed.intent_id
+          } catch {
+            output({ status: 'error', message: 'Invalid JSON on stdin' })
+            process.exitCode = 1
+            return
+          }
         }
       }
 

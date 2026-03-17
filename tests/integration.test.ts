@@ -85,7 +85,7 @@ describe('tpay send (EVM happy path)', () => {
   afterEach(() => { globalThis.fetch = originalFetch })
 
   it('outputs success with tx_hash and explorer_url', async () => {
-    process.env.WALLET_EVM_PRIVATE_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
+    process.env.WALLET_EVM_PRIVATE_KEY = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
     let callCount = 0
     globalThis.fetch = mock((url: string, opts: any) => {
       if (opts?.method === 'POST' && url.includes('/api/intents') && !url.includes('intent_id')) {
@@ -114,7 +114,7 @@ describe('tpay send (errors)', () => {
   afterEach(() => { globalThis.fetch = originalFetch })
 
   it('outputs error on VERIFICATION_FAILED', async () => {
-    process.env.WALLET_EVM_PRIVATE_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
+    process.env.WALLET_EVM_PRIVATE_KEY = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
     const failed = { ...MOCK_INTENT_EVM, status: PaymentStatus.VERIFICATION_FAILED, error_message: 'bad signature' }
     globalThis.fetch = mock((url: string, opts: any) => {
       if (opts?.method === 'POST' && !url.includes('intent_id')) return Promise.resolve(new Response(JSON.stringify(MOCK_INTENT_EVM), { status: 200 }))
@@ -130,7 +130,7 @@ describe('tpay send (errors)', () => {
   })
 
   it('outputs error on 5xx from create intent', async () => {
-    process.env.WALLET_EVM_PRIVATE_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
+    process.env.WALLET_EVM_PRIVATE_KEY = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
     globalThis.fetch = mock(() => Promise.resolve(new Response('', { status: 500 }))) as unknown as typeof fetch
     const { runCli } = await import('../src/index')
     const out = await captureOutput(() => runCli(['send', '--to', '0xabc', '--amount', '0.03', '--chain', 'base']))
@@ -140,7 +140,7 @@ describe('tpay send (errors)', () => {
   })
 
   it('error message never contains private key value', async () => {
-    const fakeKey = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
+    const fakeKey = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
     process.env.WALLET_EVM_PRIVATE_KEY = fakeKey
     globalThis.fetch = mock(() => Promise.reject(new Error(`fetch failed with ${fakeKey}`))) as unknown as typeof fetch
     const { runCli } = await import('../src/index')
@@ -168,7 +168,7 @@ describe('tpay intent status', () => {
 describe('--verbose', () => {
   it('debug output goes to stderr, stdout remains valid JSON', async () => {
     globalThis.fetch = mock(() => Promise.resolve(new Response(JSON.stringify(MOCK_SETTLED_EVM), { status: 200 }))) as unknown as typeof fetch
-    process.env.WALLET_EVM_PRIVATE_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
+    process.env.WALLET_EVM_PRIVATE_KEY = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
     const { runCli } = await import('../src/index')
     const out = await captureOutput(() => runCli(['intent', 'status', 'abc', '--verbose']))
     // stdout must be valid JSON regardless of verbose
