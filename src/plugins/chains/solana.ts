@@ -41,7 +41,7 @@ function createTransferCheckedInstruction(
   mint: PublicKey,
   destAta: PublicKey,
   owner: PublicKey,
-  amount: number,
+  amount: bigint,
   decimals: number,
 ): TransactionInstruction {
   const keys = [
@@ -52,7 +52,7 @@ function createTransferCheckedInstruction(
   ]
   const data = new Uint8Array(10)
   data[0] = 12
-  new DataView(data.buffer).setBigUint64(1, BigInt(amount), true)
+  new DataView(data.buffer).setBigUint64(1, amount, true)
   data[9] = decimals
   return new TransactionInstruction({ keys, programId: TOKEN_PROGRAM_ID, data: Buffer.from(data) })
 }
@@ -70,7 +70,7 @@ const solanaPlugin: ChainPlugin = {
     if (!feePayer) throw new Error('No feePayer available — set SOLANA_FEE_PAYER env var or ensure backend provides extra.feePayer')
 
     const decimals = (reqs.extra.decimals as number | undefined) ?? 6
-    const amountAtomic = parseInt(reqs.amount, 10)
+    const amountAtomic = BigInt(reqs.amount)
     const rpcUrl = process.env.SOLANA_RPC_URL ?? 'https://api.mainnet-beta.solana.com'
 
     // Derive keypair from 64-byte seed (first 32 bytes are the ed25519 private seed)
