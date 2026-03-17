@@ -1,10 +1,17 @@
 // tests/loader.test.ts
-import { describe, it, expect, beforeEach } from 'bun:test'
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
 
 describe('resolveWalletPlugin', () => {
+  beforeEach(() => {
+    delete process.env.WALLET_PROVIDER
+  })
+
+  afterEach(() => {
+    delete process.env.WALLET_PROVIDER
+  })
+
   it('loads env plugin by default', async () => {
     const { resolveWalletPlugin } = await import('../src/loader')
-    delete process.env.WALLET_PROVIDER
     const plugin = await resolveWalletPlugin()
     expect(plugin.name).toBe('env')
   })
