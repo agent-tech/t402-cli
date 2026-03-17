@@ -76,7 +76,7 @@ export async function pollIntent(
       return { terminal: false, success: false }
     }
 
-    const data = await res.json() as GetPaymentIntentResponse & { error_message?: string }
+    const data = await res.json() as GetPaymentIntentResponse
 
     if (data.status === PaymentStatus.BASE_SETTLED) {
       return { terminal: true, success: true, data }
@@ -86,12 +86,12 @@ export async function pollIntent(
     }
     if (
       data.status === PaymentStatus.VERIFICATION_FAILED ||
-      data.error_message
+      ('error_message' in data && (data as any).error_message)
     ) {
       return {
         terminal: true,
         success: false,
-        message: `Verification failed: ${data.error_message ?? 'unknown'}`,
+        message: `Verification failed: ${('error_message' in data ? (data as any).error_message : undefined) ?? 'unknown'}`,
       }
     }
 

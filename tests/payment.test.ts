@@ -1,7 +1,7 @@
 // tests/payment.test.ts
 import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test'
 import { PaymentStatus } from '../src/types'
-import type { GetPaymentIntentResponse } from '../src/types'
+import type { GetPaymentIntentResponse, PaymentIntentResponse } from '../src/types'
 
 // Mock fixture data (from fe-t402-pay/src/modules/paymentFlow/api/mockingData.ts)
 const MOCK_INTENT_EVM = {
@@ -45,20 +45,24 @@ const MOCK_SETTLED_EVM = {
 }
 
 describe('pollIntent', () => {
+  let originalFetch: typeof fetch
+  beforeEach(() => { originalFetch = globalThis.fetch })
+  afterEach(() => { globalThis.fetch = originalFetch })
+
   it('returns success when status is BASE_SETTLED', async () => {
     const fetchMock = mock(() => Promise.resolve(new Response(JSON.stringify(MOCK_SETTLED_EVM), { status: 200 })))
-    globalThis.fetch = fetchMock as any
+    globalThis.fetch = fetchMock as unknown as typeof fetch
     const { pollIntent } = await import('../src/payment')
-    const result = await pollIntent('http://api', MOCK_INTENT_EVM as any, 0)
+    const result = await pollIntent('http://api', MOCK_INTENT_EVM as PaymentIntentResponse, 0)
     expect(result.terminal).toBe(true)
     expect(result.success).toBe(true)
   })
 
   it('returns error on VERIFICATION_FAILED', async () => {
     const failed = { ...MOCK_INTENT_EVM, status: PaymentStatus.VERIFICATION_FAILED, error_message: 'sig invalid' }
-    globalThis.fetch = mock(() => Promise.resolve(new Response(JSON.stringify(failed), { status: 200 }))) as any
+    globalThis.fetch = mock(() => Promise.resolve(new Response(JSON.stringify(failed), { status: 200 }))) as unknown as typeof fetch
     const { pollIntent } = await import('../src/payment')
-    const result = await pollIntent('http://api', MOCK_INTENT_EVM as any, 0)
+    const result = await pollIntent('http://api', MOCK_INTENT_EVM as PaymentIntentResponse, 0)
     expect(result.terminal).toBe(true)
     expect(result.success).toBe(false)
     expect(result.message).toContain('sig invalid')
@@ -66,18 +70,18 @@ describe('pollIntent', () => {
 
   it('returns error when error_message present', async () => {
     const withMsg = { ...MOCK_INTENT_EVM, error_message: 'unexpected error' }
-    globalThis.fetch = mock(() => Promise.resolve(new Response(JSON.stringify(withMsg), { status: 200 }))) as any
+    globalThis.fetch = mock(() => Promise.resolve(new Response(JSON.stringify(withMsg), { status: 200 }))) as unknown as typeof fetch
     const { pollIntent } = await import('../src/payment')
-    const result = await pollIntent('http://api', MOCK_INTENT_EVM as any, 0)
+    const result = await pollIntent('http://api', MOCK_INTENT_EVM as PaymentIntentResponse, 0)
     expect(result.terminal).toBe(true)
     expect(result.success).toBe(false)
   })
 
   it('returns error on EXPIRED status', async () => {
     const expired = { ...MOCK_INTENT_EVM, status: PaymentStatus.EXPIRED, error_message: 'expired' }
-    globalThis.fetch = mock(() => Promise.resolve(new Response(JSON.stringify(expired), { status: 200 }))) as any
+    globalThis.fetch = mock(() => Promise.resolve(new Response(JSON.stringify(expired), { status: 200 }))) as unknown as typeof fetch
     const { pollIntent } = await import('../src/payment')
-    const result = await pollIntent('http://api', MOCK_INTENT_EVM as any, 0)
+    const result = await pollIntent('http://api', MOCK_INTENT_EVM as PaymentIntentResponse, 0)
     expect(result.terminal).toBe(true)
     expect(result.success).toBe(false)
     expect(result.message).toBe('Payment expired')
@@ -85,23 +89,23 @@ describe('pollIntent', () => {
 
   it('returns non-terminal for PENDING status', async () => {
     const pending = { ...MOCK_INTENT_EVM, status: PaymentStatus.PENDING }
-    globalThis.fetch = mock(() => Promise.resolve(new Response(JSON.stringify(pending), { status: 200 }))) as any
+    globalThis.fetch = mock(() => Promise.resolve(new Response(JSON.stringify(pending), { status: 200 }))) as unknown as typeof fetch
     const { pollIntent } = await import('../src/payment')
-    const result = await pollIntent('http://api', MOCK_INTENT_EVM as any, 0)
+    const result = await pollIntent('http://api', MOCK_INTENT_EVM as PaymentIntentResponse, 0)
     expect(result.terminal).toBe(false)
   })
 
   it('skips tick on poll timeout (non-terminal)', async () => {
-    globalThis.fetch = mock(() => Promise.reject(new Error('AbortError'))) as any
+    globalThis.fetch = mock(() => Promise.reject(new Error('AbortError'))) as unknown as typeof fetch
     const { pollIntent } = await import('../src/payment')
-    const result = await pollIntent('http://api', MOCK_INTENT_EVM as any, 0)
+    const result = await pollIntent('http://api', MOCK_INTENT_EVM as PaymentIntentResponse, 0)
     expect(result.terminal).toBe(false)
   })
 
   it('skips tick on 5xx poll response (non-terminal)', async () => {
-    globalThis.fetch = mock(() => Promise.resolve(new Response('', { status: 503 }))) as any
+    globalThis.fetch = mock(() => Promise.resolve(new Response('', { status: 503 }))) as unknown as typeof fetch
     const { pollIntent } = await import('../src/payment')
-    const result = await pollIntent('http://api', MOCK_INTENT_EVM as any, 0)
+    const result = await pollIntent('http://api', MOCK_INTENT_EVM as PaymentIntentResponse, 0)
     expect(result.terminal).toBe(false)
   })
 })
@@ -110,11 +114,11 @@ describe('expires_at deadline', () => {
   it('stops polling when past expires_at', async () => {
     const expiredIntent = { ...MOCK_INTENT_EVM, expires_at: new Date(Date.now() - 1000).toISOString() }
     const { checkExpired } = await import('../src/payment')
-    expect(checkExpired(expiredIntent as any)).toBe(true)
+    expect(checkExpired(expiredIntent as PaymentIntentResponse)).toBe(true)
   })
 
   it('continues polling when before expires_at', async () => {
     const { checkExpired } = await import('../src/payment')
-    expect(checkExpired(MOCK_INTENT_EVM as any)).toBe(false)
+    expect(checkExpired(MOCK_INTENT_EVM as PaymentIntentResponse)).toBe(false)
   })
 })
