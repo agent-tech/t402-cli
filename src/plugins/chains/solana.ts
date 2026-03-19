@@ -6,6 +6,7 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from '@solana/web3.js'
+import { mnemonicToSeedSync } from 'bip39'
 import type { ChainPlugin } from './types'
 import type { PaymentIntentResponse } from '../../types'
 import type { WalletPlugin } from '../wallets/types'
@@ -73,8 +74,10 @@ const solanaPlugin: ChainPlugin = {
     const amountAtomic = BigInt(reqs.amount)
     const rpcUrl = process.env.SOLANA_RPC_URL ?? 'https://api.mainnet-beta.solana.com'
 
-    // Derive keypair from 64-byte seed (first 32 bytes are the ed25519 private seed)
-    const seed = wallet.getSolanaSeed()
+    // Derive keypair from BIP39 mnemonic (first 32 bytes of the 64-byte seed)
+    const mnemonic = wallet.getSeedPhrase?.()
+    if (!mnemonic) throw new Error('No seed phrase available')
+    const seed = mnemonicToSeedSync(mnemonic)
     const keypair = Keypair.fromSeed(seed.slice(0, 32))
 
     const connection = new Connection(rpcUrl, 'confirmed')

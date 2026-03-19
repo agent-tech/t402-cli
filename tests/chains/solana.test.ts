@@ -23,6 +23,7 @@ const MOCK_INTENT: PaymentIntentResponse = {
     asset: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
     extra: { feePayer: 'L54zkaPQFeTn1UsEqieEXBqWrPShiaZEPD7mS5WXfQg', decimals: 6 },
   },
+  estimated_fee: '0.00003',
 }
 
 // Test mnemonic (DO NOT USE IN PRODUCTION)
