@@ -1,19 +1,36 @@
 # @agentpay/tpay-cli
 
 A CLI for AI agents to send USDC/USDT via the T402 x402 v2 payment protocol.
-All output is structured JSON. Logs go to stderr.
+Output defaults to structured JSON. Use `--format text` for human-readable output. Logs go to stderr.
 
 ## Commands
 
 | Command | Description |
 |---|---|
+| `tpay setup` | Configure wallet keys interactively |
+| `tpay setup --from-env <file>` | Import keys from an env file |
 | `tpay send --to <addr> --amount <n> --chain <chain>` | Send payment |
 | `tpay intent status <intent_id>` | Check payment status |
 | `tpay version` | Print version |
 | `tpay help` / `tpay --help` | Show all commands |
 | `tpay send --help` | Show send args |
 
-Global flag: `--verbose` — debug output to stderr.
+Global flags:
+- `--verbose` — debug output to stderr
+- `--format text|json` — output format (default: `json`)
+
+```bash
+# JSON output (default, for programmatic use)
+tpay send --to 0x... --amount 10 --chain base
+{"status":"success","intent_id":"...","tx_hash":"...","explorer_url":"..."}
+
+# Text output (human-readable)
+tpay send --to 0x... --amount 10 --chain base --format text
+status: success
+intent_id: abc123
+tx_hash: 0x...
+explorer_url: https://...
+```
 
 Stdin JSON mode: pipe `{"to":"...","amount":"...","chain":"..."}` to `tpay send`.
 
@@ -32,8 +49,8 @@ Stdin JSON mode: pipe `{"to":"...","amount":"...","chain":"..."}` to `tpay send`
 | Variable | Required | Description |
 |---|---|---|
 | `WALLET_PROVIDER` | No (default: `env`) | Wallet plugin name |
+| `WALLET_SEED_PHRASE` | Yes (for Solana) | BIP-39 mnemonic seed phrase |
 | `WALLET_EVM_PRIVATE_KEY` | For EVM chains | Hex private key (`0x...`) |
-| `WALLET_SOLANA_SEED` | For Solana | 64-byte seed as hex string |
 
 ## Build
 

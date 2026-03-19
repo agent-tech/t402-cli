@@ -25,13 +25,13 @@ const MOCK_INTENT: PaymentIntentResponse = {
   },
 }
 
-// 64-byte test seed (DO NOT USE IN PRODUCTION)
-const TEST_SEED = new Uint8Array(64).fill(1)
+// Test mnemonic (DO NOT USE IN PRODUCTION)
+const TEST_SEED_PHRASE = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
 
 const mockWallet = {
   name: 'test',
+  getSeedPhrase: () => TEST_SEED_PHRASE,
   getEvmPrivateKey: () => '0x0000',
-  getSolanaSeed: () => TEST_SEED,
 }
 
 // Mock the RPC call to avoid network requests in tests

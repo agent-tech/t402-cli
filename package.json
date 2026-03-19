@@ -2,13 +2,15 @@
   "name": "@agentpay/tpay-cli",
   "version": "0.0.1",
   "description": "T402 CLI for agent automation",
-  "main": "src/index.ts",
+  "type": "module",
+  "main": "dist/index.js",
   "bin": {
-    "tpay": "src/index.ts"
+    "tpay": "dist/index.js"
   },
   "scripts": {
     "dev": "bun run src/index.ts",
-    "build": "bun build --compile src/index.ts --outfile tpay",
+    "build": "bun build src/index.ts --target node --outfile dist/index.js",
+    "build:binary": "bun build --compile src/index.ts --outfile tpay",
     "test": "bun test",
     "test:watch": "bun test --watch"
   },

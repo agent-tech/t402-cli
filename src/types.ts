@@ -40,6 +40,7 @@ export interface PaymentIntentResponse {
   source_recipient?: string
   sending_amount: string
   receiving_amount: string
+  estimated_fee: string
   payer_chain: string
   status: PaymentStatus
   created_at: string

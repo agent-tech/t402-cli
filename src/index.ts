@@ -1,3 +1,6 @@
+#!/usr/bin/env node
+
+import { loadEnv } from './env'
 import { createLogger, setLogger, sanitizeError } from './logger'
 import { resolveWalletPlugin, resolveChainPlugin } from './loader'
 import { createIntent, runPayment, getIntentStatus } from './payment'
@@ -9,8 +12,34 @@ import { PaymentStatus } from './types'
 const CONFIG = getConfig()
 const VERSION = getVersion()
 
-function output(data: unknown): void {
-  process.stdout.write(JSON.stringify(data) + '\n')
+type OutputFormat = 'json' | 'text'
+
+function formatText(data: unknown, indent = 0): string {
+  if (data === null || data === undefined) return ''
+  if (typeof data !== 'object') return String(data)
+
+  const pad = '  '.repeat(indent)
+  const entries = Object.entries(data as Record<string, unknown>)
+  return entries
+    .filter(([, v]) => v !== undefined && v !== null)
+    .map(([k, v]) => {
+      if (Array.isArray(v)) {
+        return `${pad}${k}:\n${v.map((item) => `${pad}  ${item}`).join('\n')}`
+      }
+      if (typeof v === 'object') {
+        return `${pad}${k}:\n${formatText(v, indent + 1)}`
+      }
+      return `${pad}${k}: ${v}`
+    })
+    .join('\n')
+}
+
+function output(format: OutputFormat, data: unknown): void {
+  if (format === 'text') {
+    process.stdout.write(formatText(data) + '\n')
+  } else {
+    process.stdout.write(JSON.stringify(data) + '\n')
+  }
 }
 
 function parseArgs(argv: string[]): { args: Record<string, string>; flags: Set<string>; positional: string[] } {
@@ -57,8 +86,10 @@ async function readStdin(): Promise<string> {
 }
 
 export async function runCli(argv: string[]): Promise<void> {
+  loadEnv()
   const { args, flags, positional } = parseArgs(argv)
   const verbose = flags.has('--verbose')
+  const format = (args['--format'] === 'text' ? 'text' : 'json') as OutputFormat
   const logger = createLogger(verbose)
   setLogger(logger)
 
@@ -67,28 +98,60 @@ export async function runCli(argv: string[]): Promise<void> {
   try {
     // Help commands — only show global help if no subcommand (or bare --help/help)
     if (!command || command === 'help' || (flags.has('--help') && !positional.length)) {
-      output({
+      output(format, {
+        description: 'CLI for sending USDC/USDT payments via the T402 x402 protocol',
+        payment_flow: [
+          '1. Setup: run `tpay setup --from-env <file>` or `tpay setup` to configure wallet keys',
+          '2. Send: run `tpay send --to <recipient> --amount <n> --chain <chain>` to create and execute a payment',
+          '   - The CLI creates a payment intent with the T402 API',
+          '   - Signs the transaction using the configured wallet (seed phrase for Solana, private key for EVM)',
+          '   - Submits the signed proof and polls until settlement',
+          '   - Returns intent_id, tx_hash, and explorer_url on success',
+          '3. Verify: run `tpay intent status <intent_id>` to check payment status at any time',
+        ],
         commands: {
+          'setup': 'Configure wallet keys. Use --from-env <file> to import from an env file',
           'send': 'Send USDC/USDT via T402. Args: --to, --amount, --chain, [--wallet-provider]',
           'intent status <intent_id>': 'Fetch current status of a payment intent',
           'version': 'Print CLI version',
           'help': 'Show this help',
         },
+        supported_chains: {
+          'base': 'Base Mainnet (EVM)',
+          'bsc': 'BSC Mainnet (EVM)',
+          'base-sepolia': 'Base Sepolia testnet (EVM)',
+          'solana': 'Solana Mainnet',
+          'solana-devnet': 'Solana Devnet',
+        },
+        env_vars: {
+          'WALLET_SEED_PHRASE': 'BIP-39 mnemonic (required for Solana)',
+          'WALLET_EVM_PRIVATE_KEY': 'Hex private key with 0x prefix (required for EVM)',
+        },
         global_flags: {
           '--verbose': 'Enable debug logging to stderr',
+          '--format': 'Output format: json (default) | text',
         },
+        stdin: 'send accepts JSON via stdin: {"to":"...","amount":"...","chain":"..."}',
       })
       return
     }
 
+    if (command === 'setup') {
+      const { runSetup } = await import('./setup')
+      const fromEnv = args['--from-env']
+      const result = await runSetup(fromEnv ? { fromEnv } : undefined)
+      output(format, { status: 'success', saved: result.saved })
+      return
+    }
+
     if (command === 'version') {
-      output(VERSION)
+      output(format, VERSION)
       return
     }
 
     if (command === 'send') {
       if (flags.has('--help')) {
-        output({
+        output(format, {
           command: 'send',
           description: 'Send USDC/USDT via T402 x402 protocol',
           args: {
@@ -118,7 +181,7 @@ export async function runCli(argv: string[]): Promise<void> {
             amount = amount || parsed.amount
             chain = chain || parsed.chain
           } catch {
-            output({ status: 'error', message: 'Invalid JSON on stdin' })
+            output(format, { status: 'error', message: 'Invalid JSON on stdin' })
             process.exitCode = 1
             return
           }
@@ -126,7 +189,7 @@ export async function runCli(argv: string[]): Promise<void> {
       }
 
       if (!to || !amount || !chain) {
-        output({ status: 'error', message: 'Missing required args: --to, --amount, --chain' })
+        output(format, { status: 'error', message: 'Missing required args: --to, --amount, --chain' })
         process.exitCode = 1
         return
       }
@@ -149,14 +212,14 @@ export async function runCli(argv: string[]): Promise<void> {
 
       if (result.success && result.data) {
         const settled = result.data as GetPaymentIntentBaseSettledResponse
-        output({
+        output(format, {
           status: 'success',
           intent_id: intent.intent_id,
           tx_hash: settled.source_payment?.tx_hash,
           explorer_url: settled.source_payment?.explorer_url,
         })
       } else {
-        output({ status: 'error', message: result.message ?? 'Payment failed' })
+        output(format, { status: 'error', message: result.message ?? 'Payment failed' })
         process.exitCode = 1
       }
       return
@@ -172,7 +235,7 @@ export async function runCli(argv: string[]): Promise<void> {
             const parsed = JSON.parse(stdinData)
             intentId = parsed.intent_id
           } catch {
-            output({ status: 'error', message: 'Invalid JSON on stdin' })
+            output(format, { status: 'error', message: 'Invalid JSON on stdin' })
             process.exitCode = 1
             return
           }
@@ -180,7 +243,7 @@ export async function runCli(argv: string[]): Promise<void> {
       }
 
       if (!intentId) {
-        output({ status: 'error', message: 'Missing intent_id' })
+        output(format, { status: 'error', message: 'Missing intent_id' })
         process.exitCode = 1
         return
       }
@@ -208,21 +271,21 @@ export async function runCli(argv: string[]): Promise<void> {
         response.error_message = data.error_message
       }
 
-      output(response)
+      output(format, response)
       return
     }
 
-    output({ status: 'error', message: `Unknown command: "${command}". Run "tpay help" for usage.` })
+    output(format, { status: 'error', message: `Unknown command: "${command}". Run "tpay help" for usage.` })
     process.exitCode = 1
 
   } catch (e) {
     let message = sanitizeError(e)
-    // Scrub any private key values from error messages
+    // Scrub any sensitive values from error messages
     const evmKey = process.env.WALLET_EVM_PRIVATE_KEY
-    const solKey = process.env.WALLET_SOLANA_PRIVATE_KEY
+    const seedPhrase = process.env.WALLET_SEED_PHRASE
     if (evmKey) message = message.replaceAll(evmKey, '[REDACTED]')
-    if (solKey) message = message.replaceAll(solKey, '[REDACTED]')
-    output({ status: 'error', message })
+    if (seedPhrase) message = message.replaceAll(seedPhrase, '[REDACTED]')
+    output(format, { status: 'error', message })
     process.exitCode = 1
   }
 }

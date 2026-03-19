@@ -20,6 +20,7 @@ const evmPlugin: ChainPlugin = {
     if (!asset) throw new Error('payment_requirements.asset missing from intent')
 
     const chainId = parseChainId(intent.payment_requirements.network)
+    if (!wallet.getEvmPrivateKey) throw new Error('EVM requires WALLET_EVM_PRIVATE_KEY to be set')
     const privateKey = wallet.getEvmPrivateKey()
 
     // Use ethers Wallet directly from raw private key

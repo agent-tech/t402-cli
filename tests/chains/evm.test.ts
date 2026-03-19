@@ -29,8 +29,8 @@ const TEST_PRIVATE_KEY = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
 const mockWallet = {
   name: 'test',
+  getSeedPhrase: () => '',
   getEvmPrivateKey: () => TEST_PRIVATE_KEY,
-  getSolanaSeed: () => new Uint8Array(64),
 }
 
 describe('EVM chain plugin', () => {
