@@ -1,12 +1,12 @@
 import {
   Connection,
-  Keypair,
   PublicKey,
   TransactionInstruction,
   TransactionMessage,
   VersionedTransaction,
 } from '@solana/web3.js'
-import { mnemonicToSeedSync } from 'bip39'
+import WalletManagerSolana from '@tetherto/wdk-wallet-solana'
+import { signBytes } from '@solana/keys'
 import type { ChainPlugin } from './types'
 import type { PaymentIntentResponse } from '../../types'
 import type { WalletPlugin } from '../wallets/types'
@@ -74,61 +74,69 @@ const solanaPlugin: ChainPlugin = {
     const amountAtomic = BigInt(reqs.amount)
     const rpcUrl = process.env.SOLANA_RPC_URL ?? 'https://api.mainnet-beta.solana.com'
 
-    // Derive keypair from BIP39 mnemonic (first 32 bytes of the 64-byte seed)
+    // Derive wallet account using WDK (SLIP-10 HD derivation: m/44'/501'/0'/0/0)
     const mnemonic = wallet.getSeedPhrase?.()
     if (!mnemonic) throw new Error('No seed phrase available')
-    const seed = mnemonicToSeedSync(mnemonic)
-    const keypair = Keypair.fromSeed(seed.slice(0, 32))
+    const walletManager = new WalletManagerSolana(mnemonic, { rpcUrl })
+    const account = await walletManager.getAccount(0)
 
-    const connection = new Connection(rpcUrl, 'confirmed')
-    const { blockhash } = await connection.getLatestBlockhash('confirmed')
+    try {
+      const payerPubkey = new PublicKey(await account.getAddress())
 
-    const mint = new PublicKey(asset)
-    const payerPubkey = keypair.publicKey
-    const recipientPubkey = new PublicKey(reqs.payTo)
-    const feePayerPubkey = new PublicKey(feePayer)
+      const connection = new Connection(rpcUrl, 'confirmed')
+      const { blockhash } = await connection.getLatestBlockhash('confirmed')
 
-    const payerAta = getAssociatedTokenAddress(payerPubkey, mint)
-    const recipientAta = getAssociatedTokenAddress(recipientPubkey, mint)
+      const mint = new PublicKey(asset)
+      const recipientPubkey = new PublicKey(reqs.payTo)
+      const feePayerPubkey = new PublicKey(feePayer)
 
-    const instructions = [
-      createSetComputeUnitLimitInstruction(200_000),
-      createSetComputeUnitPriceInstruction(1),
-      createTransferCheckedInstruction(payerAta, mint, recipientAta, payerPubkey, amountAtomic, decimals),
-    ]
+      const payerAta = getAssociatedTokenAddress(payerPubkey, mint)
+      const recipientAta = getAssociatedTokenAddress(recipientPubkey, mint)
 
-    const messageV0 = new TransactionMessage({
-      payerKey: feePayerPubkey,
-      recentBlockhash: blockhash,
-      instructions,
-    }).compileToV0Message()
+      const instructions = [
+        createSetComputeUnitLimitInstruction(200_000),
+        createSetComputeUnitPriceInstruction(1),
+        createTransferCheckedInstruction(payerAta, mint, recipientAta, payerPubkey, amountAtomic, decimals),
+      ]
 
-    const tx = new VersionedTransaction(messageV0)
-    tx.sign([keypair])
+      const messageV0 = new TransactionMessage({
+        payerKey: feePayerPubkey,
+        recentBlockhash: blockhash,
+        instructions,
+      }).compileToV0Message()
 
-    const serialized = tx.serialize()
-    const transactionBase64 = Buffer.from(serialized).toString('base64')
+      const tx = new VersionedTransaction(messageV0)
 
-    const payload = {
-      x402Version: 2,
-      resource: {
-        url: `/api/intents/${intent.intent_id}`,
-        description: `Payment of ${intent.sending_amount}`,
-        mimeType: 'application/json',
-      },
-      accepted: {
-        scheme: reqs.scheme,
-        network: reqs.network,
-        amount: reqs.amount,
-        asset,
-        payTo: reqs.payTo,
-        maxTimeoutSeconds: reqs.maxTimeoutSeconds,
-        extra: { feePayer }, // strip to feePayer ONLY
-      },
-      payload: { transaction: transactionBase64 },
+      // Sign using WDK's _signer (KeyPairSigner from @solana/signers)
+      const signature = await signBytes((account as any)._signer.keyPair.privateKey, tx.message.serialize())
+      tx.addSignature(payerPubkey, signature)
+
+      const serialized = tx.serialize()
+      const transactionBase64 = Buffer.from(serialized).toString('base64')
+
+      const payload = {
+        x402Version: 2,
+        resource: {
+          url: `/api/intents/${intent.intent_id}`,
+          description: `Payment of ${intent.sending_amount}`,
+          mimeType: 'application/json',
+        },
+        accepted: {
+          scheme: reqs.scheme,
+          network: reqs.network,
+          amount: reqs.amount,
+          asset,
+          payTo: reqs.payTo,
+          maxTimeoutSeconds: reqs.maxTimeoutSeconds,
+          extra: { feePayer }, // strip to feePayer ONLY
+        },
+        payload: { transaction: transactionBase64 },
+      }
+
+      return Buffer.from(JSON.stringify(payload)).toString('base64')
+    } finally {
+      account.dispose()
     }
-
-    return Buffer.from(JSON.stringify(payload)).toString('base64')
   },
 }
 
