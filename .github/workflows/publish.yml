@@ -4,38 +4,42 @@ on:
   release:
     types: [published]
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   publish:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
-
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
         with:
-          bun-version: latest
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
-
+      - uses: oven-sh/setup-bun@v2
+      - name: Update package version
+        id: prep
+        run: |
+          VERSION=${{ github.ref_name }}
+          echo "Version: $VERSION"
+          npm version $VERSION --no-git-tag-version
+          # handle prerelease
+          if [[ $VERSION == *"-"* ]]; then
+            # get the first word after '-' as the tag, e.g., 1.0.0-alpha.1 -> alpha, or 'next' by default
+            DIST_TAG=$(echo $VERSION | sed -E 's/.*-([a-z]+).*/\1/')
+            if [[ -z "$DIST_TAG" || "$DIST_TAG" =~ [0-9] ]]; then
+              DIST_TAG="next"
+            fi
+            echo "TAG=--tag $DIST_TAG" >> $GITHUB_OUTPUT
+            echo "Detected prerelease version, using tag: $DIST_TAG"
+          else
+            # normal release
+            echo "TAG=" >> $GITHUB_OUTPUT
+            echo "Detected stable version, using default latest tag"
+          fi
       - run: bun ci
-
+      - run: bun run build --if-present
       - run: bun test
-
-      - run: bun run build
-
-      - name: Clear auth token for OIDC
-        run: echo "NODE_AUTH_TOKEN=" >> $GITHUB_ENV
-
-      # - name: Upgrade npm for OIDC
-      #   run: npm install -g npm@latest
-
-      # - name: Configure npm registry
-      #   run: npm config set registry https://registry.npmjs.org/
-
-      - run: bunx npm publish --provenance
+      - run: bunx npm publish ${{ steps.prep.outputs.TAG }} --provenance
