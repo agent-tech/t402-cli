@@ -1,82 +1,170 @@
 # @agenttech/tpay-cli
 
-A CLI for AI agents to send USDT via the T402 x402 v2 payment protocol on Solana.
-Output defaults to structured JSON. Use `--format text` for human-readable output. Logs go to stderr.
+Send USDT payments on Solana via the T402 x402 v2 protocol. Designed for AI agents — all output is structured JSON on stdout, logs go to stderr.
+
+## Install
+
+```bash
+npm install -g @agenttech/tpay-cli
+```
+
+Verify:
+
+```bash
+tpay version
+```
+
+## Setup
+
+The CLI needs a BIP-39 seed phrase to sign transactions. Two setup paths:
+
+### Non-interactive (recommended for agents)
+
+```bash
+WALLET_SEED_PHRASE="your twelve or twenty four word seed phrase here" \
+TPAY_PASSPHRASE="encryption-password" \
+tpay setup
+```
+
+This encrypts and saves the seed phrase to `~/.config/tpay/.env`.
+
+### From env file
+
+```bash
+tpay setup --from-env /path/to/.env
+```
+
+The file must contain `WALLET_SEED_PHRASE=...`.
+
+### Skip setup (inline seed phrase)
+
+You can skip `tpay setup` entirely by passing the seed phrase as an environment variable on every call:
+
+```bash
+WALLET_SEED_PHRASE="your seed phrase" tpay send --to <address> --amount 10
+```
+
+### Setup output
+
+```json
+{"status":"success","saved":true}
+```
 
 ## Commands
 
-| Command | Description |
-|---|---|
-| `tpay setup` | Configure wallet keys interactively |
-| `tpay setup --from-env <file>` | Import keys from an env file |
-| `tpay send --to <addr> --amount <n>` | Send payment |
-| `tpay balance --address <addr>` | Show wallet SOL and USDT balances |
-| `tpay intent status <intent_id>` | Check payment status |
-| `tpay version` | Print version |
-| `tpay help` / `tpay --help` | Show all commands |
-| `tpay send --help` | Show send args |
+### `tpay send`
 
-Global flags:
-- `--verbose` — debug output to stderr
-- `--format text|json` — output format (default: `json`)
+Send a USDT payment.
 
 ```bash
-# JSON output (default, for programmatic use)
-tpay send --to <solana-address> --amount 10
-{"status":"success","intent_id":"...","tx_hash":"...","explorer_url":"..."}
-
-# Text output (human-readable)
-tpay send --to <solana-address> --amount 10 --format text
-status: success
-intent_id: abc123
-tx_hash: ...
-explorer_url: https://...
+tpay send --to <solana-address> --amount <number>
 ```
 
+Or pipe JSON via stdin:
+
 ```bash
-# Check wallet balance (read-only, no keys needed)
+echo '{"to":"<solana-address>","amount":"10"}' | tpay send
+```
+
+**Success output:**
+
+```json
+{"status":"success","intent_id":"intent_abc123","tx_hash":"5xY...","explorer_url":"https://..."}
+```
+
+**Error output:**
+
+```json
+{"status":"error","error_type":"payment_error","message":"Payment failed","intent_id":"intent_abc123"}
+```
+
+### `tpay balance`
+
+Check SOL and USDT balances for any address. No wallet keys required.
+
+```bash
 tpay balance --address <solana-address>
-{"status":"ok","address":"<solana-address>","sol":"0.5","usdt":"100.0"}
 ```
 
-Stdin JSON mode: pipe `{"to":"...","amount":"..."}` to `tpay send`.
+**Output:**
 
-## Supported Chains
+```json
+{"status":"ok","address":"<solana-address>","sol":"1.5","usdt":"100.0"}
+```
 
-| Network |
-|---|
-| Solana Mainnet |
-| Solana Devnet |
+### `tpay intent status`
 
-## Runtime Environment Variables
+Check the status of a payment intent.
+
+```bash
+tpay intent status <intent_id>
+```
+
+Or via stdin:
+
+```bash
+echo '{"intent_id":"intent_abc123"}' | tpay intent status
+```
+
+**Output:**
+
+```json
+{"status":"ok","intent_id":"intent_abc123","payment_status":"BASE_SETTLED","sending_amount":"10","receiving_amount":"10","payer_chain":"solana","created_at":"...","expires_at":"...","tx_hash":"5xY...","explorer_url":"https://..."}
+```
+
+### `tpay version`
+
+```bash
+tpay version
+```
+
+### `tpay help`
+
+```bash
+tpay help
+```
+
+## Global Flags
+
+| Flag | Description |
+|---|---|
+| `--verbose` | Debug logs to stderr |
+| `--format json\|text` | Output format (default: `json`) |
+
+## Environment Variables
 
 | Variable | Required | Description |
 |---|---|---|
-| `WALLET_SEED_PHRASE` | Yes | BIP-39 mnemonic seed phrase |
-| `TPAY_PASSPHRASE` | No | Passphrase for decrypting config file (cleared from env after use) |
-| `SOLANA_FEE_PAYER` | No | Override fee payer address (build-time default used if unset) |
+| `WALLET_SEED_PHRASE` | Yes (if no config file) | BIP-39 mnemonic (12–24 words) |
+| `TPAY_PASSPHRASE` | No | Decrypts saved config at `~/.config/tpay/.env` |
+| `SOLANA_FEE_PAYER` | No | Override fee payer address |
 
-## Build
+If both `WALLET_SEED_PHRASE` env var and an encrypted config file exist, the env var takes precedence.
 
-```bash
-T402_API_URL=https://api.example.com \
-SOLANA_RPC_URL=https://your-rpc.example.com \
-SOLANA_FEE_PAYER=<base58> \
-bun build --compile src/index.ts --outfile tpay
+## Exit Codes
+
+| Code | Type | Meaning |
+|---|---|---|
+| 0 | — | Success |
+| 1 | `validation_error` | Invalid arguments or input |
+| 2 | `runtime_error` | Unexpected runtime failure |
+| 3 | `configuration_error` | Missing or invalid config |
+| 4 | `network_error` | API or RPC failure |
+| 5 | `payment_error` | Payment-specific failure |
+
+All errors output JSON to stdout:
+
+```json
+{"status":"error","error_type":"<type>","message":"<description>"}
 ```
 
-## Development
+## Supported Chains
 
-```bash
-bun install
-bun test
-WALLET_SEED_PHRASE="..." bun run src/index.ts send --to <solana-address> --amount 1
-```
+| Chain | Network ID |
+|---|---|
+| Solana Mainnet | `solana` |
+| Solana Devnet | `solana-devnet` |
 
-## Adding a New Chain Plugin
+## License
 
-- [ ] Create `src/plugins/chains/<name>.ts`
-- [ ] Implement `ChainPlugin` interface (`name`, `chains[]`, `sign()`)
-- [ ] Add to `CHAIN_PLUGIN_LOADERS` in `src/loader.ts`
-- [ ] Add to Supported Chains table above
-- [ ] Test: verify x402 payload structure matches T402 backend
+ISC
