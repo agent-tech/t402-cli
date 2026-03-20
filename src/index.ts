@@ -86,7 +86,6 @@ async function readStdin(): Promise<string> {
 }
 
 export async function runCli(argv: string[]): Promise<void> {
-  loadEnv()
   const { args, flags, positional } = parseArgs(argv)
   const verbose = flags.has('--verbose')
   const format = (args['--format'] === 'text' ? 'text' : 'json') as OutputFormat
@@ -94,8 +93,12 @@ export async function runCli(argv: string[]): Promise<void> {
   setLogger(logger)
 
   const [command, ...rest] = positional
+  const passphraseForScrub = process.env.TPAY_PASSPHRASE
+  // Commands that require wallet config — loadEnv only for these
+  const needsWallet = (command === 'send' && !flags.has('--help')) || (command === 'intent' && rest[0] !== 'status')
 
   try {
+    if (needsWallet) await loadEnv()
     // Help commands — only show global help if no subcommand (or bare --help/help)
     if (!command || command === 'help' || (flags.has('--help') && !positional.length)) {
       output(format, {
@@ -110,7 +113,7 @@ export async function runCli(argv: string[]): Promise<void> {
           '3. Verify: run `tpay intent status <intent_id>` to check payment status at any time',
         ],
         commands: {
-          'setup': 'Configure wallet keys. Use --from-env <file> to import from an env file',
+          'setup': 'Configure wallet keys with encryption. Use --from-env <file> to import. Non-interactive: WALLET_SEED_PHRASE="..." TPAY_PASSPHRASE="..." tpay setup',
           'send': 'Send USDC/USDT via T402. Args: --to, --amount, --chain, [--wallet-provider]',
           'intent status <intent_id>': 'Fetch current status of a payment intent',
           'version': 'Print CLI version',
@@ -121,13 +124,16 @@ export async function runCli(argv: string[]): Promise<void> {
           'solana-devnet': 'Solana Devnet',
         },
         env_vars: {
-          'WALLET_SEED_PHRASE': 'BIP-39 mnemonic (required for Solana)',
+          'WALLET_SEED_PHRASE': 'BIP-39 mnemonic (bypasses encrypted config if set directly)',
+          'TPAY_PASSPHRASE': 'Passphrase for decrypting config file (cleared from env after use)',
+          'SOLANA_FEE_PAYER': 'Override fee payer address (build-time default used if unset)',
         },
         global_flags: {
           '--verbose': 'Enable debug logging to stderr',
           '--format': 'Output format: json (default) | text',
         },
         stdin: 'send accepts JSON via stdin: {"to":"...","amount":"...","chain":"..."}',
+        runtime_note: 'Set TPAY_PASSPHRASE in environment to skip passphrase prompt on each run.',
       })
       return
     }
@@ -279,6 +285,7 @@ export async function runCli(argv: string[]): Promise<void> {
     // Scrub any sensitive values from error messages
     const seedPhrase = process.env.WALLET_SEED_PHRASE
     if (seedPhrase) message = message.replaceAll(seedPhrase, '[REDACTED]')
+    if (passphraseForScrub) message = message.replaceAll(passphraseForScrub, '[REDACTED]')
     output(format, { status: 'error', message })
     process.exitCode = 1
   }
