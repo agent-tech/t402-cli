@@ -39,4 +39,4 @@ jobs:
       - run: bun ci
       - run: bun run build --if-present
       - run: bun test
-      - run: bunx npm publish ${{ steps.prep.outputs.TAG }} --provenance
+      - run: NODE_AUTH_TOKEN="" bunx npm publish ${{ steps.prep.outputs.TAG }} --provenance
