@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(bun test:*)"
+      "Bash(bun test:*)",
+      "Skill(cli-developer)",
+      "Skill(cli-developer:*)"
     ]
   },
   "sandbox": {

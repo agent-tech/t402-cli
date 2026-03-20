@@ -84,3 +84,26 @@ export interface CliOutput {
   status: 'success' | 'error' | 'ok'
   [key: string]: unknown
 }
+
+// Type guards for GetPaymentIntentResponse narrowing
+export function isBaseSettledResponse(
+  data: GetPaymentIntentResponse
+): data is GetPaymentIntentBaseSettledResponse {
+  return data.status === PaymentStatus.BASE_SETTLED && 'source_payment' in data
+}
+
+export function isFailedResponse(
+  data: GetPaymentIntentResponse
+): data is GetPaymentIntentFailedResponse {
+  return (
+    (data.status === PaymentStatus.VERIFICATION_FAILED ||
+     data.status === PaymentStatus.EXPIRED) &&
+    'error_message' in data
+  )
+}
+
+export function hasErrorMessage(
+  data: GetPaymentIntentResponse
+): data is GetPaymentIntentFailedResponse {
+  return 'error_message' in data
+}

@@ -1,5 +1,5 @@
 import type { PaymentIntentResponse, GetPaymentIntentResponse, SendInput } from './types'
-import { PaymentStatus } from './types'
+import { PaymentStatus, isFailedResponse } from './types'
 
 const REQUEST_TIMEOUT_MS = 30_000
 
@@ -84,14 +84,11 @@ export async function pollIntent(
     if (data.status === PaymentStatus.EXPIRED) {
       return { terminal: true, success: false, message: 'Payment expired' }
     }
-    if (
-      data.status === PaymentStatus.VERIFICATION_FAILED ||
-      ('error_message' in data && (data as any).error_message)
-    ) {
+    if (isFailedResponse(data)) {
       return {
         terminal: true,
         success: false,
-        message: `Verification failed: ${('error_message' in data ? (data as any).error_message : undefined) ?? 'unknown'}`,
+        message: `Verification failed: ${data.error_message}`,
       }
     }
 
