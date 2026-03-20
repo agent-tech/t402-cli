@@ -11,8 +11,6 @@ export interface RootOptions {
 export interface SendOptions {
   to?: string
   amount?: string
-  chain?: string
-  walletProvider?: string
 }
 
 export interface SetupOptions {

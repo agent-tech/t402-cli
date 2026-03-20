@@ -2,7 +2,7 @@ import type { CliContext } from '../types'
 import { BaseCommand } from './base'
 import { output } from '../output'
 import { getIntentStatus } from '../../payment'
-import { getConfig } from '../../macros/config.macro'
+import { getConfig } from '../../macros/config.macro' with { type: 'macro' }
 import { isBaseSettledResponse, hasErrorMessage } from '../../types'
 import { NetworkError } from '../errors'
 

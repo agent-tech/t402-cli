@@ -4,6 +4,7 @@ import { join } from 'path'
 import { homedir } from 'os'
 import { decrypt, CryptoError } from './crypto'
 import { readHidden, isTTY } from './prompt'
+import { validateSeedPhrase } from './seedphrase'
 
 const ENV_PATH = join(homedir(), '.config', 'tpay', '.env')
 
@@ -25,7 +26,10 @@ function parseEnvContent(content: string): void {
 
 export async function loadEnv(): Promise<void> {
   // Intentional bypass: env var takes precedence over encrypted config
-  if (process.env.WALLET_SEED_PHRASE) return
+  if (process.env.WALLET_SEED_PHRASE) {
+    validateSeedPhrase(process.env.WALLET_SEED_PHRASE)
+    return
+  }
 
   let content: string
   try {
@@ -75,6 +79,7 @@ export async function loadEnv(): Promise<void> {
     if (!process.env.WALLET_SEED_PHRASE) {
       throw new Error("Decrypted config contains no WALLET_SEED_PHRASE. Re-run 'tpay setup' to reconfigure.")
     }
+    validateSeedPhrase(process.env.WALLET_SEED_PHRASE)
     return
   }
 

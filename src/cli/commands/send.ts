@@ -3,48 +3,41 @@ import { BaseCommand } from './base'
 import { output } from '../output'
 import { resolveWalletPlugin, resolveChainPlugin } from '../../loader'
 import { createIntent, runPayment } from '../../payment'
-import { getConfig } from '../../macros/config.macro'
+import { getConfig } from '../../macros/config.macro' with { type: 'macro' }
 import { isBaseSettledResponse } from '../../types'
 import { PaymentError, NetworkError } from '../errors'
 
 const CONFIG = getConfig()
-
+console.log('CONFIG', CONFIG)
 interface SendStdinData {
   to?: string
   amount?: string
-  chain?: string
 }
 
 class SendCommand extends BaseCommand {
   async execute(opts: SendOptions): Promise<number> {
-    let { to, amount, chain, walletProvider } = opts
+    let { to, amount } = opts
 
     // Merge with stdin if provided
-    if (!to || !amount || !chain) {
+    if (!to || !amount) {
       const stdinData = await this.readStdinJson<SendStdinData>()
       if (stdinData) {
         to = to ?? stdinData.to
         amount = amount ?? stdinData.amount
-        chain = chain ?? stdinData.chain
       }
     }
 
     // Validate required args
-    this.requireArgs({ to, amount, chain })
-
-    // Override wallet provider if specified
-    if (walletProvider) {
-      process.env.WALLET_PROVIDER = walletProvider
-    }
+    this.requireArgs({ to, amount })
 
     try {
       // Resolve plugins
-      this.ctx.logger.debug('Resolving plugins', { chain, walletProvider })
+      this.ctx.logger.debug('Resolving plugins')
       const walletPlugin = await resolveWalletPlugin()
 
       // Create intent
-      this.ctx.logger.debug('Creating payment intent', { to, amount, chain })
-      const intent = await createIntent(CONFIG.apiUrl, { to: to!, amount: amount!, chain: chain! })
+      this.ctx.logger.debug('Creating payment intent', { to, amount })
+      const intent = await createIntent(CONFIG.apiUrl, { to: to!, amount: amount! })
       this.ctx.logger.debug('Intent created', { intent_id: intent.intent_id })
 
       // Sign transaction

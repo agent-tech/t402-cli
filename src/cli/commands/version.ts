@@ -1,6 +1,6 @@
 import type { CliContext } from '../types'
 import { output } from '../output'
-import { getVersion } from '../../macros/version.macro'
+import { getVersion } from '../../macros/version.macro' with { type: 'macro' }
 
 export async function runVersion(ctx: CliContext): Promise<number> {
   output(ctx.format, getVersion())

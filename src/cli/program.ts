@@ -10,7 +10,7 @@ import { runVersion } from './commands/version'
 import { runSetup } from './commands/setup'
 import { runSend } from './commands/send'
 import { runIntentStatus } from './commands/intent-status'
-import { getVersion } from '../macros/version.macro'
+import { getVersion } from '../macros/version.macro' with { type: 'macro' }
 
 export function createProgram(): Command {
   const program = new Command()
@@ -76,10 +76,8 @@ function registerCommands(program: Command): void {
   program
     .command('send')
     .description('Send USDC/USDT via T402')
-    .option('--to <recipient>', 'Recipient address or email')
+    .option('--to <recipient>', 'Recipient wallet address')
     .option('--amount <n>', 'Amount to send')
-    .option('--chain <id>', 'Chain ID')
-    .option('--wallet-provider <name>', 'Wallet plugin name')
     .action(async (opts: SendOptions) => {
       await loadEnv()
       process.exitCode = await runSend(getContext(), opts)

@@ -119,7 +119,7 @@ describe('tpay send (Solana happy path)', () => {
     }) as unknown as typeof fetch
 
     const { runCli } = await import('../src/index')
-    const out = await captureOutput(() => runCli(['send', '--to', 'some_address', '--amount', '0.03', '--chain', 'solana']))
+    const out = await captureOutput(() => runCli(['send', '--to', 'some_address', '--amount', '0.03']))
     const json = JSON.parse(out)
     expect(json.status).toBe('success')
     expect(json.tx_hash).toBe('solana_tx_hash_abc')
@@ -147,7 +147,7 @@ describe('tpay send (errors)', () => {
     }) as unknown as typeof fetch
 
     const { runCli } = await import('../src/index')
-    const out = await captureOutput(() => runCli(['send', '--to', 'some_address', '--amount', '0.03', '--chain', 'solana']))
+    const out = await captureOutput(() => runCli(['send', '--to', 'some_address', '--amount', '0.03']))
     const json = JSON.parse(out)
     expect(json.status).toBe('error')
     expect(json.message).toContain('bad signature')
@@ -156,7 +156,7 @@ describe('tpay send (errors)', () => {
   it('outputs error on 5xx from create intent', async () => {
     globalThis.fetch = mock(() => Promise.resolve(new Response('', { status: 500 }))) as unknown as typeof fetch
     const { runCli } = await import('../src/index')
-    const out = await captureOutput(() => runCli(['send', '--to', 'some_address', '--amount', '0.03', '--chain', 'solana']))
+    const out = await captureOutput(() => runCli(['send', '--to', 'some_address', '--amount', '0.03']))
     const json = JSON.parse(out)
     expect(json.status).toBe('error')
     expect(json.message).toContain('500')
@@ -165,7 +165,7 @@ describe('tpay send (errors)', () => {
   it('error message never contains seed phrase', async () => {
     globalThis.fetch = mock(() => Promise.reject(new Error(`fetch failed with ${TEST_SEED_PHRASE}`))) as unknown as typeof fetch
     const { runCli } = await import('../src/index')
-    const out = await captureOutput(() => runCli(['send', '--to', 'some_address', '--amount', '0.03', '--chain', 'solana']))
+    const out = await captureOutput(() => runCli(['send', '--to', 'some_address', '--amount', '0.03']))
     expect(out).not.toContain(TEST_SEED_PHRASE)
   })
 })

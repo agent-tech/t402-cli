@@ -4,6 +4,7 @@ import { dirname } from 'path'
 import { ENV_PATH } from './env'
 import { readHidden, isTTY } from './prompt'
 import { encrypt } from './crypto'
+import { validateSeedPhrase } from './seedphrase'
 
 function loadFile(path: string): string | undefined {
   const content = readFileSync(path, 'utf8')
@@ -53,6 +54,9 @@ export async function runSetup(opts?: { fromEnv?: string }): Promise<{ saved: st
     const confirm = await readHidden('Confirm seed phrase: ')
     if (seedPhrase !== confirm) throw new Error('Seed phrases do not match.')
   }
+
+  // Step 2b — Validate seed phrase
+  validateSeedPhrase(seedPhrase)
 
   // Step 3 — Passphrase
   let passphrase: string

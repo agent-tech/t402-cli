@@ -17,13 +17,8 @@ function withTimeout(ms: number): AbortSignal {
 export async function createIntent(apiUrl: string, input: SendInput): Promise<PaymentIntentResponse> {
   const body: Record<string, string> = {
     amount: input.amount,
-    payer_chain: input.chain,
-  }
-  // recipient can be email or wallet address
-  if (input.to.includes('@')) {
-    body.email = input.to
-  } else {
-    body.recipient = input.to
+    payer_chain: 'solana',
+    recipient: input.to,
   }
 
   const res = await fetch(`${apiUrl}/api/intents`, {

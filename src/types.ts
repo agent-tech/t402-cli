@@ -76,8 +76,6 @@ export type GetPaymentIntentResponse =
 export interface SendInput {
   to: string
   amount: string
-  chain: string
-  walletProvider?: string
 }
 
 export interface CliOutput {
