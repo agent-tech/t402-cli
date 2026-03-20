@@ -31,18 +31,6 @@ describe('resolveWalletPlugin', () => {
 })
 
 describe('resolveChainPlugin', () => {
-  it('resolves evm plugin for base', async () => {
-    const { resolveChainPlugin } = await import('../src/loader')
-    const plugin = await resolveChainPlugin('base')
-    expect(plugin.chains).toContain('base')
-  })
-
-  it('resolves evm plugin for bsc', async () => {
-    const { resolveChainPlugin } = await import('../src/loader')
-    const plugin = await resolveChainPlugin('bsc')
-    expect(plugin.chains).toContain('bsc')
-  })
-
   it('resolves solana plugin for solana', async () => {
     const { resolveChainPlugin } = await import('../src/loader')
     const plugin = await resolveChainPlugin('solana')

@@ -117,15 +117,11 @@ export async function runCli(argv: string[]): Promise<void> {
           'help': 'Show this help',
         },
         supported_chains: {
-          'base': 'Base Mainnet (EVM)',
-          'bsc': 'BSC Mainnet (EVM)',
-          'base-sepolia': 'Base Sepolia testnet (EVM)',
           'solana': 'Solana Mainnet',
           'solana-devnet': 'Solana Devnet',
         },
         env_vars: {
           'WALLET_SEED_PHRASE': 'BIP-39 mnemonic (required for Solana)',
-          'WALLET_EVM_PRIVATE_KEY': 'Hex private key with 0x prefix (required for EVM)',
         },
         global_flags: {
           '--verbose': 'Enable debug logging to stderr',
@@ -281,9 +277,7 @@ export async function runCli(argv: string[]): Promise<void> {
   } catch (e) {
     let message = sanitizeError(e)
     // Scrub any sensitive values from error messages
-    const evmKey = process.env.WALLET_EVM_PRIVATE_KEY
     const seedPhrase = process.env.WALLET_SEED_PHRASE
-    if (evmKey) message = message.replaceAll(evmKey, '[REDACTED]')
     if (seedPhrase) message = message.replaceAll(seedPhrase, '[REDACTED]')
     output(format, { status: 'error', message })
     process.exitCode = 1

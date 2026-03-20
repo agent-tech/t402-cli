@@ -1,30 +1,35 @@
 // tests/integration.test.ts
-import { describe, it, expect, mock, beforeEach, afterEach, spyOn } from 'bun:test'
+import { describe, it, expect, mock, beforeEach, afterEach, beforeAll, afterAll, spyOn } from 'bun:test'
+import { Connection } from '@solana/web3.js'
 import { PaymentStatus } from '../src/types'
 
+// Test mnemonic (DO NOT USE IN PRODUCTION)
+const TEST_SEED_PHRASE = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
+const MOCK_BLOCKHASH = 'EkSnNWid2cvwEVnVx9aBqawnmiCNiDgp3gUdkDPTKN1N'
+
 // Fixture data
-const MOCK_INTENT_EVM = {
+const MOCK_INTENT_SOLANA = {
   intent_id: '3b154135-4091-4f23-b962-4871d7160dea',
-  merchant_recipient: '0xa789...',
+  merchant_recipient: '7F3aWqfBt9MHEF96hz87fvoSE4BaYCwTwHoi19bJBjC8',
   sending_amount: '0.03',
   receiving_amount: '0.02797',
-  payer_chain: 'base',
+  payer_chain: 'solana',
   status: PaymentStatus.AWAITING_PAYMENT,
   created_at: '2025-12-27T14:58:43Z',
   expires_at: new Date(Date.now() + 600_000).toISOString(),
-  fee_breakdown: { platform_fee: '0.00003', platform_fee_percentage: '0.1%', source_chain: 'base', source_chain_fee: '0.001', target_chain: 'base', target_chain_fee: '0.001', total_fee: '0.002' },
+  fee_breakdown: { platform_fee: '0.00003', platform_fee_percentage: '0.1%', source_chain: 'solana', source_chain_fee: '0.001', target_chain: 'base', target_chain_fee: '0.001', total_fee: '0.002' },
   payment_requirements: {
-    scheme: 'exact', network: 'eip155:8453', amount: '30000',
-    payTo: '0x88F2c900e5aF5ae26C372c5997a1D0bf2bfa4b8d', maxTimeoutSeconds: 599,
-    asset: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913',
-    extra: { name: 'USD Coin', version: '2' },
+    scheme: 'exact', network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', amount: '30000',
+    payTo: '7F3aWqfBt9MHEF96hz87fvoSE4BaYCwTwHoi19bJBjC8', maxTimeoutSeconds: 599,
+    asset: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+    extra: { feePayer: 'L54zkaPQFeTn1UsEqieEXBqWrPShiaZEPD7mS5WXfQg', decimals: 6 },
   },
 }
 
-const MOCK_SETTLED_EVM = {
-  ...MOCK_INTENT_EVM,
+const MOCK_SETTLED_SOLANA = {
+  ...MOCK_INTENT_SOLANA,
   status: PaymentStatus.BASE_SETTLED,
-  source_payment: { chain: 'base', tx_hash: '0xabc123', settle_proof: 'proof', settled_at: '2025-12-27T15:00Z', explorer_url: 'https://basescan.org/tx/0xabc123' },
+  source_payment: { chain: 'solana', tx_hash: 'solana_tx_hash_abc', settle_proof: 'proof', settled_at: '2025-12-27T15:00Z', explorer_url: 'https://solscan.io/tx/solana_tx_hash_abc' },
   base_payment: { chain: 'base', tx_hash: '0xdef456', settle_proof: 'x402_base', settled_at: '2025-12-27T15:00Z', explorer_url: 'https://basescan.org/tx/0xdef456' },
 }
 
@@ -41,6 +46,18 @@ function captureOutput(fn: () => Promise<void>): Promise<string> {
     resolve(output)
   })
 }
+
+// Mock Solana RPC for all tests in this file
+const originalGetLatestBlockhash = Connection.prototype.getLatestBlockhash
+beforeAll(() => {
+  Connection.prototype.getLatestBlockhash = async () => ({
+    blockhash: MOCK_BLOCKHASH,
+    lastValidBlockHeight: 100,
+  })
+})
+afterAll(() => {
+  Connection.prototype.getLatestBlockhash = originalGetLatestBlockhash
+})
 
 describe('tpay version', () => {
   it('outputs JSON with name and version', async () => {
@@ -79,73 +96,77 @@ describe('tpay send --help', () => {
   })
 })
 
-describe('tpay send (EVM happy path)', () => {
+describe('tpay send (Solana happy path)', () => {
   let originalFetch: typeof fetch
-  beforeEach(() => { originalFetch = globalThis.fetch })
-  afterEach(() => { globalThis.fetch = originalFetch })
+  beforeEach(() => {
+    originalFetch = globalThis.fetch
+    process.env.WALLET_SEED_PHRASE = TEST_SEED_PHRASE
+  })
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+    delete process.env.WALLET_SEED_PHRASE
+  })
 
   it('outputs success with tx_hash and explorer_url', async () => {
-    process.env.WALLET_EVM_PRIVATE_KEY = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-    let callCount = 0
     globalThis.fetch = mock((url: string, opts: any) => {
       if (opts?.method === 'POST' && url.includes('/api/intents') && !url.includes('intent_id')) {
-        return Promise.resolve(new Response(JSON.stringify(MOCK_INTENT_EVM), { status: 200 }))
+        return Promise.resolve(new Response(JSON.stringify(MOCK_INTENT_SOLANA), { status: 200 }))
       }
       if (opts?.method === 'POST') {
         return Promise.resolve(new Response(JSON.stringify({ status: 'PENDING' }), { status: 200 }))
       }
-      // GET poll — return settled on second call
-      callCount++
-      return Promise.resolve(new Response(JSON.stringify(MOCK_SETTLED_EVM), { status: 200 }))
+      return Promise.resolve(new Response(JSON.stringify(MOCK_SETTLED_SOLANA), { status: 200 }))
     }) as unknown as typeof fetch
 
     const { runCli } = await import('../src/index')
-    const out = await captureOutput(() => runCli(['send', '--to', '0xabc', '--amount', '0.03', '--chain', 'base']))
+    const out = await captureOutput(() => runCli(['send', '--to', 'some_address', '--amount', '0.03', '--chain', 'solana']))
     const json = JSON.parse(out)
     expect(json.status).toBe('success')
-    expect(json.tx_hash).toBe('0xabc123')
+    expect(json.tx_hash).toBe('solana_tx_hash_abc')
     expect(json.explorer_url).toBeTruthy()
   })
 })
 
 describe('tpay send (errors)', () => {
   let originalFetch: typeof fetch
-  beforeEach(() => { originalFetch = globalThis.fetch })
-  afterEach(() => { globalThis.fetch = originalFetch })
+  beforeEach(() => {
+    originalFetch = globalThis.fetch
+    process.env.WALLET_SEED_PHRASE = TEST_SEED_PHRASE
+  })
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+    delete process.env.WALLET_SEED_PHRASE
+  })
 
   it('outputs error on VERIFICATION_FAILED', async () => {
-    process.env.WALLET_EVM_PRIVATE_KEY = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-    const failed = { ...MOCK_INTENT_EVM, status: PaymentStatus.VERIFICATION_FAILED, error_message: 'bad signature' }
+    const failed = { ...MOCK_INTENT_SOLANA, status: PaymentStatus.VERIFICATION_FAILED, error_message: 'bad signature' }
     globalThis.fetch = mock((url: string, opts: any) => {
-      if (opts?.method === 'POST' && !url.includes('intent_id')) return Promise.resolve(new Response(JSON.stringify(MOCK_INTENT_EVM), { status: 200 }))
+      if (opts?.method === 'POST' && !url.includes('intent_id')) return Promise.resolve(new Response(JSON.stringify(MOCK_INTENT_SOLANA), { status: 200 }))
       if (opts?.method === 'POST') return Promise.resolve(new Response(JSON.stringify({ status: 'PENDING' }), { status: 200 }))
       return Promise.resolve(new Response(JSON.stringify(failed), { status: 200 }))
     }) as unknown as typeof fetch
 
     const { runCli } = await import('../src/index')
-    const out = await captureOutput(() => runCli(['send', '--to', '0xabc', '--amount', '0.03', '--chain', 'base']))
+    const out = await captureOutput(() => runCli(['send', '--to', 'some_address', '--amount', '0.03', '--chain', 'solana']))
     const json = JSON.parse(out)
     expect(json.status).toBe('error')
     expect(json.message).toContain('bad signature')
   })
 
   it('outputs error on 5xx from create intent', async () => {
-    process.env.WALLET_EVM_PRIVATE_KEY = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
     globalThis.fetch = mock(() => Promise.resolve(new Response('', { status: 500 }))) as unknown as typeof fetch
     const { runCli } = await import('../src/index')
-    const out = await captureOutput(() => runCli(['send', '--to', '0xabc', '--amount', '0.03', '--chain', 'base']))
+    const out = await captureOutput(() => runCli(['send', '--to', 'some_address', '--amount', '0.03', '--chain', 'solana']))
     const json = JSON.parse(out)
     expect(json.status).toBe('error')
     expect(json.message).toContain('500')
   })
 
-  it('error message never contains private key value', async () => {
-    const fakeKey = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-    process.env.WALLET_EVM_PRIVATE_KEY = fakeKey
-    globalThis.fetch = mock(() => Promise.reject(new Error(`fetch failed with ${fakeKey}`))) as unknown as typeof fetch
+  it('error message never contains seed phrase', async () => {
+    globalThis.fetch = mock(() => Promise.reject(new Error(`fetch failed with ${TEST_SEED_PHRASE}`))) as unknown as typeof fetch
     const { runCli } = await import('../src/index')
-    const out = await captureOutput(() => runCli(['send', '--to', '0xabc', '--amount', '0.03', '--chain', 'base']))
-    expect(out).not.toContain(fakeKey)
+    const out = await captureOutput(() => runCli(['send', '--to', 'some_address', '--amount', '0.03', '--chain', 'solana']))
+    expect(out).not.toContain(TEST_SEED_PHRASE)
   })
 })
 
@@ -155,20 +176,19 @@ describe('tpay intent status', () => {
   afterEach(() => { globalThis.fetch = originalFetch })
 
   it('outputs ok with payment_status for BASE_SETTLED', async () => {
-    globalThis.fetch = mock(() => Promise.resolve(new Response(JSON.stringify(MOCK_SETTLED_EVM), { status: 200 }))) as unknown as typeof fetch
+    globalThis.fetch = mock(() => Promise.resolve(new Response(JSON.stringify(MOCK_SETTLED_SOLANA), { status: 200 }))) as unknown as typeof fetch
     const { runCli } = await import('../src/index')
     const out = await captureOutput(() => runCli(['intent', 'status', '3b154135-4091-4f23-b962-4871d7160dea']))
     const json = JSON.parse(out)
     expect(json.status).toBe('ok')
     expect(json.payment_status).toBe('BASE_SETTLED')
-    expect(json.tx_hash).toBe('0xabc123')
+    expect(json.tx_hash).toBe('solana_tx_hash_abc')
   })
 })
 
 describe('--verbose', () => {
   it('debug output goes to stderr, stdout remains valid JSON', async () => {
-    globalThis.fetch = mock(() => Promise.resolve(new Response(JSON.stringify(MOCK_SETTLED_EVM), { status: 200 }))) as unknown as typeof fetch
-    process.env.WALLET_EVM_PRIVATE_KEY = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+    globalThis.fetch = mock(() => Promise.resolve(new Response(JSON.stringify(MOCK_SETTLED_SOLANA), { status: 200 }))) as unknown as typeof fetch
     const { runCli } = await import('../src/index')
     const out = await captureOutput(() => runCli(['intent', 'status', 'abc', '--verbose']))
     // stdout must be valid JSON regardless of verbose

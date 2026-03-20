@@ -7,7 +7,6 @@ const WALLET_PLUGINS: Record<string, () => Promise<WalletPlugin>> = {
 }
 
 const CHAIN_PLUGIN_LOADERS: Array<() => Promise<ChainPlugin>> = [
-  () => import('./plugins/chains/evm').then(m => m.default),
   () => import('./plugins/chains/solana').then(m => m.default),
 ]
 

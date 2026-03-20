@@ -4,7 +4,6 @@ import { ENV_PATH } from './env'
 
 const KEYS = [
   { env: 'WALLET_SEED_PHRASE', label: 'Seed Phrase (BIP-39 mnemonic)' },
-  { env: 'WALLET_EVM_PRIVATE_KEY', label: 'EVM Private Key (hex, 0x-prefixed, optional)' },
 ] as const
 
 function readHidden(prompt: string): Promise<string> {
