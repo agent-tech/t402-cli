@@ -17,6 +17,7 @@ export async function runHelp(ctx: CliContext): Promise<number> {
     commands: {
       setup: 'Configure wallet keys with encryption. Use --from-env <file> to import. Non-interactive: WALLET_SEED_PHRASE="..." TPAY_PASSPHRASE="..." tpay setup',
       send: 'Send USDC/USDT via T402. Args: --to, --amount',
+      balance: 'Show wallet SOL and USDT balances',
       'intent status <intent_id>': 'Fetch current status of a payment intent',
       version: 'Print CLI version',
       help: 'Show this help',

@@ -8,7 +8,6 @@ import { isBaseSettledResponse } from '../../types'
 import { PaymentError, NetworkError } from '../errors'
 
 const CONFIG = getConfig()
-console.log('CONFIG', CONFIG)
 interface SendStdinData {
   to?: string
   amount?: string

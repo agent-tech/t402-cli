@@ -10,6 +10,7 @@ import { runVersion } from './commands/version'
 import { runSetup } from './commands/setup'
 import { runSend } from './commands/send'
 import { runIntentStatus } from './commands/intent-status'
+import { runBalance } from './commands/balance'
 import { getVersion } from '../macros/version.macro' with { type: 'macro' }
 
 export function createProgram(): Command {
@@ -81,6 +82,14 @@ function registerCommands(program: Command): void {
     .action(async (opts: SendOptions) => {
       await loadEnv()
       process.exitCode = await runSend(getContext(), opts)
+    })
+
+  program
+    .command('balance')
+    .description('Show wallet SOL and USDT balances')
+    .option('--address <addr>', 'Solana wallet address to query')
+    .action(async (opts: { address?: string }) => {
+      process.exitCode = await runBalance(getContext(), opts)
     })
 
   const intentCmd = program
