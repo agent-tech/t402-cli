@@ -33,4 +33,7 @@ jobs:
 
       - run: npm pack --dry-run
 
-      - run: unset NODE_AUTH_TOKEN && npm publish --provenance --access public
+      - name: Remove setup-node auth token from .npmrc
+        run: sed -i '/_authToken/d' "$NPM_CONFIG_USERCONFIG"
+
+      - run: npm publish --provenance --access public
