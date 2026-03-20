@@ -19,15 +19,13 @@ jobs:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
       - uses: oven-sh/setup-bun@v2
-      - name: Update package version
+      - name: Prepare publish
         id: prep
         run: |
-          VERSION=${{ github.ref_name }}
+          VERSION=$(node -p "require('./package.json').version")
           echo "Version: $VERSION"
-          npm version $VERSION --no-git-tag-version
           # handle prerelease
           if [[ $VERSION == *"-"* ]]; then
-            # get the first word after '-' as the tag, e.g., 1.0.0-alpha.1 -> alpha, or 'next' by default
             DIST_TAG=$(echo $VERSION | sed -E 's/.*-([a-z]+).*/\1/')
             if [[ -z "$DIST_TAG" || "$DIST_TAG" =~ [0-9] ]]; then
               DIST_TAG="next"
@@ -35,7 +33,6 @@ jobs:
             echo "TAG=--tag $DIST_TAG" >> $GITHUB_OUTPUT
             echo "Detected prerelease version, using tag: $DIST_TAG"
           else
-            # normal release
             echo "TAG=" >> $GITHUB_OUTPUT
             echo "Detected stable version, using default latest tag"
           fi
