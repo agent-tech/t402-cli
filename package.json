@@ -1,6 +1,6 @@
 {
   "name": "@agenttech/tpay-cli",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "T402 CLI for agent automation",
   "type": "module",
   "main": "dist/index.js",
