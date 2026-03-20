@@ -1,5 +1,5 @@
 {
-  "name": "@agentpay/tpay-cli",
+  "name": "@agenttech/tpay-cli",
   "version": "0.0.1",
   "description": "T402 CLI for agent automation",
   "type": "module",
@@ -7,16 +7,41 @@
   "bin": {
     "tpay": "dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "dev": "bun run src/index.ts",
     "build": "bun build src/index.ts --target node --outfile dist/index.js",
     "build:binary": "bun build --compile src/index.ts --outfile tpay",
+    "prepublishOnly": "bun run build",
     "test": "bun test",
     "test:watch": "bun test --watch"
   },
   "author": "TianyiLi",
   "license": "ISC",
-  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agent-tech/t402-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/agent-tech/t402-cli/issues"
+  },
+  "homepage": "https://github.com/agent-tech/t402-cli#readme",
+  "keywords": [
+    "t402",
+    "x402",
+    "usdt",
+    "solana",
+    "payment",
+    "cli"
+  ],
   "dependencies": {
     "commander": "^12.1.0",
     "@solana/keys": "^6.4.0",
