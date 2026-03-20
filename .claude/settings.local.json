@@ -3,5 +3,9 @@
     "allow": [
       "Bash(bun test:*)"
     ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true
   }
 }
