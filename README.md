@@ -165,6 +165,14 @@ All errors output JSON to stdout:
 | Solana Mainnet | `solana` |
 | Solana Devnet | `solana-devnet` |
 
+## Third-party Dependencies
+
+- **@tetherto/wdk-wallet-solana** — WDK by Tether, Solana wallet module
+- **@solana/web3.js** — Solana RPC and transaction construction
+- **@solana/keys** — Cryptographic signing
+- **Commander.js** — CLI framework
+- **AgentPay T402 API** — Payment intent and settlement service
+
 ## License
 
-ISC
+Apache-2.0

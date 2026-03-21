@@ -18,14 +18,14 @@
   },
   "scripts": {
     "dev": "bun run src/index.ts",
-    "build": "bun build src/index.ts --target node --outfile dist/index.js",
+    "build": "bun build src/index.ts --target node --external sodium-native --outfile dist/index.js",
     "build:binary": "bun build --compile src/index.ts --outfile tpay",
     "prepublishOnly": "bun run build",
     "test": "bun test",
     "test:watch": "bun test --watch"
   },
   "author": "TianyiLi",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/agent-tech/t402-cli.git"
