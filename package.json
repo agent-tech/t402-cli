@@ -32,7 +32,7 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/agent-tech/t402-cli.git"
+    "url": "https://github.com/agent-tech/t402-cli"
   },
   "bugs": {
     "url": "https://github.com/agent-tech/t402-cli/issues"
