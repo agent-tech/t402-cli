@@ -69,7 +69,7 @@ describe('pollIntent', () => {
   })
 
   it('returns error when error_message present', async () => {
-    const withMsg = { ...MOCK_INTENT_EVM, error_message: 'unexpected error' }
+    const withMsg = { ...MOCK_INTENT_EVM, status: PaymentStatus.VERIFICATION_FAILED, error_message: 'unexpected error' }
     globalThis.fetch = mock(() => Promise.resolve(new Response(JSON.stringify(withMsg), { status: 200 }))) as unknown as typeof fetch
     const { pollIntent } = await import('../src/payment')
     const result = await pollIntent('http://api', MOCK_INTENT_EVM as PaymentIntentResponse, 0)
