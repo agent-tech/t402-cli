@@ -1,6 +1,6 @@
 {
   "name": "@agenttech/tpay-cli",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "T402 CLI for agent automation",
   "type": "module",
   "main": "dist/index.js",
@@ -14,7 +14,7 @@
     "access": "public"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=24"
   },
   "scripts": {
     "dev": "bun run src/index.ts",
@@ -24,7 +24,11 @@
     "test": "bun test",
     "test:watch": "bun test --watch"
   },
-  "author": "TianyiLi",
+  "author": {
+    "name": "paul",
+    "email": "paul@agent.tech",
+    "url": "https://agent.tech"
+  },
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
