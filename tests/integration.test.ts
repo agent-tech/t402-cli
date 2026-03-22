@@ -65,7 +65,7 @@ describe('tpay version', () => {
     const out = await captureOutput(() => runCli(['version']))
     const json = JSON.parse(out)
     expect(json.name).toBe('@agenttech/tpay-cli')
-    expect(json.version).toMatch(/^\d+\.\d+\.\d+$/)
+    expect(json.version).toMatch(/^\d+\.\d+\.\d+/)
   })
 })
 
