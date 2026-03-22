@@ -9,34 +9,33 @@ permissions:
   contents: read
 
 jobs:
-  publish:
+  publish-npm:
+    name: 'Publish: npm Registry'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: 'Checkout'
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: 'Setup Bun'
+        uses: oven-sh/setup-bun@v1
         with:
-          node-version: '24'
+          bun-version: latest
+          registry-url: "https://registry.npmjs.org"
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24.x'
           registry-url: 'https://registry.npmjs.org'
-      - uses: oven-sh/setup-bun@v2
-      - name: Prepare publish
-        id: prep
+
+      - name: Install packages
+        run: bun install
+
+      - name: Build code
+        run: bun run build
+
+      - name: Test
+        run: bun run test
+
+      - name: 'Publish'
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "Version: $VERSION"
-          # handle prerelease
-          if [[ $VERSION == *"-"* ]]; then
-            DIST_TAG=$(echo $VERSION | sed -E 's/.*-([a-z]+).*/\1/')
-            if [[ -z "$DIST_TAG" || "$DIST_TAG" =~ [0-9] ]]; then
-              DIST_TAG="next"
-            fi
-            echo "TAG=--tag $DIST_TAG" >> $GITHUB_OUTPUT
-            echo "Detected prerelease version, using tag: $DIST_TAG"
-          else
-            echo "TAG=" >> $GITHUB_OUTPUT
-            echo "Detected stable version, using default latest tag"
-          fi
-      - run: bun ci
-      - run: bun run build --if-present
-      - run: bun test
-      - run: NODE_AUTH_TOKEN="" bunx npm publish ${{ steps.prep.outputs.TAG }} --provenance
+          NODE_AUTH_TOKEN="" npm publish --provenance --access=public
